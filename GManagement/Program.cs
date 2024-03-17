@@ -1,3 +1,6 @@
+using GManagement.DbTest;
+using GManagement.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -14,8 +17,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapGet("/games", () => GameDb.Get());
+app.MapPost("/games", (Game game) => GameDb.Post(game));
+app.MapPut("/games/{id}", (Game game, int id) => GameDb.Put(game, id));
+app.MapDelete("/games/{id}", (int id) => GameDb.Delete(id));
 
-app.MapGet("/", () => "Hello World!");
 app.UseHttpsRedirection();
 
 app.Run();
