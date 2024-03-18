@@ -1,5 +1,6 @@
-using GManagement.DbTest;
 using GManagement.Models;
+using GManagement.Context;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<GameDb>(options => options.UseInMemoryDatabase("items"));
 
 var app = builder.Build();
 
@@ -17,10 +19,32 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/games", () => GameDb.Get());
-app.MapPost("/games", (Game game) => GameDb.Post(game));
-app.MapPut("/games/{id}", (Game game, int id) => GameDb.Put(game, id));
-app.MapDelete("/games/{id}", (int id) => GameDb.Delete(id));
+app.MapGet("/games", async (GameDb db) => await db.Games.ToListAsync());
+app.MapGet("/games/{id}", async (GameDb db, int id) => await db.Games.FindAsync(id));
+app.MapPost("/games", async (GameDb db, Game game) =>
+{
+    await db.Games.AddAsync(game);
+    await db.SaveChangesAsync();
+    return Results.Created();
+});
+app.MapPut("/games/{id}", async (GameDb db, Game updateGame ,int id) =>
+{
+    var oldGame = await db.Games.FindAsync(id);
+    if (oldGame is null) return Results.NotFound();
+    
+    db.Entry(oldGame).CurrentValues.SetValues(updateGame);
+    await db.SaveChangesAsync();
+    return Results.Ok(await db.Games.FindAsync(id));
+});
+app.MapDelete("/games/{id}", async (GameDb db, int id) =>
+{
+    var gameToRemove = await db.Games.FindAsync(id);
+    if (gameToRemove is null) return Results.NotFound();
+
+    db.Games.Remove(gameToRemove);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
 
 app.UseHttpsRedirection();
 
